@@ -37,15 +37,15 @@ class TrajectoryCollectionAggregator:
         self.min_stop_duration = min_stop_duration
         self.min_angle = min_angle
         self.is_latlon = self.traj_collection.trajectories[0].is_latlon
-        print('Extracting significant points ...')
+        #print('Extracting significant points ...')
         self.significant_points = self._extract_significant_points()
-        print('  No. significant points: {}'.format(len(self.significant_points)))
-        print('Clustering significant points ...')
+        #print('  No. significant points: {}'.format(len(self.significant_points)))
+        #print('Clustering significant points ...')
         self.clusters = self._cluster_significant_points()
-        print('  No. clusters: {}'.format(len(self.clusters)))
-        print('Computing flows ...')
+        #print('  No. clusters: {}'.format(len(self.clusters)))
+        #print('Computing flows ...')
         self.flows = self._compute_flows_between_clusters()
-        print('Flows ready!')
+        #print('Flows ready!')
 
     def get_significant_points_gdf(self):
         """
@@ -91,7 +91,7 @@ class TrajectoryCollectionAggregator:
 
     def _extract_significant_points(self):
         significant_points = []
-        for traj in self.traj_collection.trajectories:
+        for traj in self.traj_collection:
             a = _PtsExtractor(traj, self.max_distance, self.min_distance, self.min_stop_duration, self.min_angle)
             significant_points = significant_points + a.find_significant_points()
         return significant_points
@@ -285,7 +285,7 @@ class _SequenceGenerator:
         self.cells = cells
         self.id_to_centroid = {i: [f, [0, 0, 0, 0, 0]] for i, f in cells.iterrows()}
         self.sequences = {}
-        for traj in traj_collection.trajectories:
+        for traj in traj_collection:
             self.evaluate_trajectory(traj)
 
     def evaluate_trajectory(self, trajectory):

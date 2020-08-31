@@ -50,6 +50,22 @@ class TrajectoryCollection:
     def __str__(self):
         return 'TrajectoryCollection with {} trajectories'.format(self.__len__())
 
+    def __iter__(self):
+        """
+        Iterator for trajectories in this collection
+
+        Examples
+        --------
+        >>>  for traj in trajectory_collection:
+        >>>      print(traj)
+        """
+        for traj in self.trajectories:
+            if len(traj.df) >= 2:
+                yield traj
+            else:
+                raise ValueError(f"Trajectory with length >= 2 expected: "
+                                 f"got length {len(traj.df)}")
+
     def _df_to_trajectories(self, df, traj_id_col, obj_id_col):
         trajectories = []
         for traj_id, values in df.groupby([traj_id_col]):
@@ -62,6 +78,7 @@ class TrajectoryCollection:
             trajectory = Trajectory(values, traj_id, obj_id=obj_id)
             if trajectory.get_length() < self.min_length:
                 continue
+            trajectory.crs = df.crs
             trajectories.append(trajectory)
         return trajectories
 
@@ -78,11 +95,39 @@ class TrajectoryCollection:
         -------
         Trajectory
         """
-        for traj in self.trajectories:
+        for traj in self:
             if traj.id == traj_id:
                 return traj
 
-    def get_start_locations(self, columns=None):
+    def get_locations_at(self, t):
+        """
+        Returns GeoDataFrame with trajectory locations at the specified timestamp
+
+        Parameters
+        ----------
+        t : datetime.datetime
+        columns : list[string]
+            List of column names that should be copied from the trajectory's dataframe to the output
+
+        Returns
+        -------
+        GeoDataFrame
+            Trajectory locations at timestamp t
+        """
+        gdf = GeoDataFrame()
+        for traj in self:
+            if t == 'start':
+                x = traj.get_row_at(traj.get_start_time())
+            elif t == 'end':
+                x = traj.get_row_at(traj.get_end_time())
+            else:
+                if t < traj.get_start_time() or t > traj.get_end_time():
+                    continue
+                x = traj.get_row_at(t)
+            gdf = gdf.append(x)
+        return gdf
+
+    def get_start_locations(self):
         """
         Returns GeoDataFrame with trajectory start locations
 
@@ -96,19 +141,9 @@ class TrajectoryCollection:
         GeoDataFrame
             Trajectory start locations
         """
-        starts = []
-        for traj in self.trajectories:
-            crs = traj.crs
-            traj_start = {'t': traj.get_start_time(), 'geometry': traj.get_start_location(),
-                          'traj_id': traj.id, 'obj_id': traj.obj_id}
-            if columns and columns != [None]:
-                for column in columns:
-                    traj_start[column] = traj.df.iloc[0][column]
-            starts.append(traj_start)
-        starts = GeoDataFrame(pd.DataFrame(starts), crs=crs)
-        return starts
+        return self.get_locations_at('start')
 
-    def get_end_locations(self, columns=None):
+    def get_end_locations(self):
         """
         Returns GeoDataFrame with trajectory end locations
 
@@ -122,17 +157,7 @@ class TrajectoryCollection:
         GeoDataFrame
             Trajectory end locations
         """
-        ends = []
-        for traj in self.trajectories:
-            crs = traj.crs
-            traj_end = {'t': traj.get_end_time(), 'geometry': traj.get_end_location(),
-                          'traj_id': traj.id, 'obj_id': traj.obj_id}
-            if columns and columns != [None]:
-                for column in columns:
-                    traj_end[column] = traj.df.iloc[-1][column]
-            ends.append(traj_end)
-        ends = GeoDataFrame(pd.DataFrame(ends), crs=crs)
-        return ends
+        return self.get_locations_at('end')
 
     def split_by_date(self, mode):
         """
@@ -152,7 +177,7 @@ class TrajectoryCollection:
             Resulting split subtrajectories
         """
         trips = []
-        for traj in self.trajectories:
+        for traj in self:
             for x in traj.split_by_date(mode):
                 if x.get_length() > self.min_length:
                     trips.append(x)
@@ -178,7 +203,7 @@ class TrajectoryCollection:
             Resulting split subtrajectories
         """
         trips = []
-        for traj in self.trajectories:
+        for traj in self:
             for x in traj.split_by_observation_gap(gap_timedelta):
                 if x.get_length() > self.min_length:
                     trips.append(x)
@@ -200,7 +225,7 @@ class TrajectoryCollection:
             Resulting intersecting trajectories
         """
         intersecting = []
-        for traj in self.trajectories:
+        for traj in self:
             try:
                 if traj.intersects(polygon):
                     intersecting.append(traj)
@@ -227,7 +252,7 @@ class TrajectoryCollection:
             Resulting clipped trajectory segments
         """
         clipped = []
-        for traj in self.trajectories:
+        for traj in self:
             try:
                 for intersect in traj.clip(polygon, pointbased):
                     clipped.append(intersect)
@@ -261,7 +286,7 @@ class TrajectoryCollection:
         >>> filtered = trajectory_collection.filter('object_type', 'TypeA')
         """
         filtered = []
-        for traj in self.trajectories:
+        for traj in self:
             if traj.df.iloc[0][property_name] in property_values:
                 filtered.append(traj)
         result = copy(self)
@@ -280,7 +305,7 @@ class TrajectoryCollection:
         overwrite : bool
             Whether to overwrite existing speed values (default: False)
         """
-        for traj in self.trajectories:
+        for traj in self:
             traj.add_speed(overwrite)
 
     def get_min(self, column):
@@ -297,7 +322,7 @@ class TrajectoryCollection:
         Sortable
             Minimum value
         """
-        return min([traj.df[column].min() for traj in self.trajectories])
+        return min([traj.df[column].min() for traj in self])
 
     def get_max(self, column):
         """
@@ -313,7 +338,7 @@ class TrajectoryCollection:
         Sortable
             Maximum value
         """
-        return max([traj.df[column].max() for traj in self.trajectories])
+        return max([traj.df[column].max() for traj in self])
 
     def plot(self, *args, **kwargs):
         """
@@ -352,3 +377,12 @@ class TrajectoryCollection:
         >>> trajectory_collection.hvplot(c='speed', line_width=7.0, width=700, height=400, colorbar=True)
         """
         return _TrajectoryCollectionPlotter(self, *args, **kwargs).hvplot()
+
+
+def _get_location_at(traj, t, columns=None):
+    loc = {'t': t, 'geometry': traj.get_position_at(t),
+           'traj_id': traj.id, 'obj_id': traj.obj_id}
+    if columns and columns != [None]:
+        for column in columns:
+            loc[column] = traj.df.iloc[traj.df.index.get_loc(t, method='nearest')][column]
+    return loc

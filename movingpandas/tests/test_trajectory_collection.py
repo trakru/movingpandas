@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import pandas as pd
+import pytest
 from geopandas import GeoDataFrame
 from shapely.geometry import Point, Polygon
 from fiona.crs import from_epsg
 from datetime import datetime, timedelta
+from copy import copy
 from movingpandas.trajectory_collection import TrajectoryCollection
 
 
@@ -47,33 +49,44 @@ class TestTrajectoryCollection:
         assert self.collection.get_trajectory(2).id == 2
         assert self.collection.get_trajectory(3) is None
 
+    def test_get_locations_at(self):
+        locs = self.collection.get_locations_at(datetime(2018,1,1,12,6,0))
+        assert len(locs) == 2
+        assert locs.iloc[0].geometry in [Point(6, 0), Point(16, 10)]
+        assert locs.iloc[0].val in [5, 6]
+        assert locs.iloc[1].geometry in [Point(6, 0), Point(16, 10)]
+        assert locs.iloc[0].geometry != locs.iloc[1].geometry
+
+    def test_get_locations_at_needing_interpolation(self):
+        locs = self.collection.get_locations_at(datetime(2018,1,1,12,6,1))
+        assert len(locs) == 2
+        assert locs.iloc[0].val in [5, 6]
+
+    def test_get_locations_at_out_of_time_range(self):
+        locs = self.collection.get_locations_at(datetime(2017,1,1,12,6,1))
+        assert len(locs) == 0
+
     def test_get_start_locations(self):
-        locs = self.collection.get_start_locations(columns=['val', 'val2'])
+        locs = self.collection.get_start_locations()
         assert len(locs) == 2
         assert locs.iloc[0].geometry in [Point(0, 0), Point(10, 10)]
-        assert locs.iloc[0].traj_id in [1, 2]
-        assert locs.iloc[0].obj_id == 'A'
+        assert locs.iloc[0].id in [1, 2]
+        assert locs.iloc[0].obj == 'A'
         assert locs.iloc[0].val in [9, 10]
         assert locs.iloc[0].val2 in ['a', 'e']
         assert locs.iloc[1].geometry in [Point(0, 0), Point(10, 10)]
+        assert locs.iloc[0].geometry != locs.iloc[1].geometry
 
     def test_get_end_locations(self):
-        locs = self.collection.get_end_locations(columns=['val', 'val2'])
+        locs = self.collection.get_end_locations()
         assert len(locs) == 2
         assert locs.iloc[0].geometry in [Point(9, 9), Point(190, 19)]
-        assert locs.iloc[0].traj_id in [1, 2]
-        assert locs.iloc[0].obj_id == 'A'
+        assert locs.iloc[0].id in [1, 2]
+        assert locs.iloc[0].obj == 'A'
         assert locs.iloc[0].val in [4, 3]
         assert locs.iloc[0].val2 in ['d', 'h']
         assert locs.iloc[1].geometry in [Point(9, 9), Point(190, 19)]
-
-    def test_split_by_date(self):
-        collection = self.collection.split_by_date(mode='day')
-        assert len(collection) == 3
-
-    def test_split_by_observation_gap(self):
-        collection = self.collection.split_by_observation_gap(timedelta(hours=1))
-        assert len(collection) == 4
+        assert locs.iloc[0].geometry != locs.iloc[1].geometry
 
     def test_get_intersecting(self):
         polygon = Polygon([(-1, -1), (-1, 1), (1, 1), (1, -1), (-1, -1)])
@@ -104,3 +117,28 @@ class TestTrajectoryCollection:
         import holoviews
         result = self.collection_latlon.hvplot()
         assert isinstance(result, holoviews.core.overlay.Overlay)
+
+    def test_plot_exist_column(self):
+        from matplotlib.axes import Axes
+        result = self.collection.plot(column='val')
+        assert isinstance(result, Axes)
+
+    def test_iteration(self):
+        assert sum([1 for _ in self.collection]) == len(self.collection)
+
+    def test_iteration_error(self):
+        def filter_trajectory(trajectory):
+            trajectory.df = trajectory.df[trajectory.df['val'] >= 7]
+            return trajectory
+
+        trajs = [filter_trajectory(traj) for traj in self.collection]
+
+        lengths = (1, 2)
+        for i, traj in enumerate(trajs):
+            assert len(traj.df) == lengths[i]
+
+        collection = copy(self.collection)
+        collection.trajectories = trajs
+        with pytest.raises(ValueError):
+            for _ in collection:
+                pass

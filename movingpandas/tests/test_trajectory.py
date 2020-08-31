@@ -183,43 +183,6 @@ class TestTrajectory:
         result = make_traj([Node(0, 0), Node(-6, 10, day=1), Node(6, 6, day=2)]).get_direction()
         assert result == pytest.approx(45, 1)
 
-    def test_split_by_daybreak(self):
-        split = make_traj([Node(), Node(second=1), Node(day=2), Node(day=2, second=1)]).split_by_date()
-        assert len(split) == 2
-        assert split[0] == make_traj([Node(), Node(second=1)], id='1_1970-01-01 00:00:00')
-        assert split[1] == make_traj([Node(day=2), Node(day=2, second=1)], id='1_1970-01-02 00:00:00')
-
-    def test_split_by_date_ignores_single_node_sgements(self):
-        split = make_traj([Node(), Node(second=1), Node(day=2)]).split_by_date()
-        assert len(split) == 1
-        assert split[0] == make_traj([Node(), Node(second=1)], id='1_1970-01-01 00:00:00')
-
-    def test_split_by_daybreak_same_day_of_year(self):
-        split = make_traj([Node(), Node(second=1), Node(year=2000), Node(year=2000, second=1)]).split_by_date()
-        assert len(split) == 2
-        assert split[0] == make_traj([Node(), Node(second=1)], id='1_1970-01-01 00:00:00')
-        assert split[1] == make_traj([Node(year=2000), Node(year=2000, second=1)], id='1_2000-01-01 00:00:00')
-
-    def test_split_by_year(self):
-        split = make_traj([Node(), Node(second=1), Node(day=2), Node(day=2, second=1),
-                           Node(year=2000), Node(year=2000, second=1)]).split_by_date(mode='year')
-        assert len(split) == 2
-        assert split[0] == make_traj([Node(), Node(second=1), Node(day=2), Node(day=2, second=1)], id='1_1970-12-31 00:00:00')
-        assert split[1] == make_traj([Node(year=2000), Node(year=2000, second=1)], id='1_2000-12-31 00:00:00')
-
-    def test_split_by_observation_gap(self):
-        split = make_traj([Node(), Node(minute=1), Node(minute=5), Node(minute=6)])\
-            .split_by_observation_gap(timedelta(seconds=120))
-        assert len(split) == 2
-        assert split[0] == make_traj([Node(), Node(minute=1)], id='1_0')
-        assert split[1] == make_traj([Node(minute=5), Node(minute=6)], id='1_1')
-
-    def test_split_by_observation_gap_skip_single_points(self):
-        split = make_traj([Node(), Node(minute=1), Node(minute=5), Node(minute=7)])\
-            .split_by_observation_gap(timedelta(seconds=61))
-        assert len(split) == 1
-        assert split[0] == make_traj([Node(), Node(minute=1)], id='1_0')
-
     def test_offset_seconds(self):
         traj = self.default_traj_metric_5
         traj.apply_offset_seconds('value', -20)
@@ -241,19 +204,20 @@ class TestTrajectory:
 
     def test_plot_exists(self):
         from matplotlib.axes import Axes
-        result = self.default_traj_metric.plot()
-        assert isinstance(result, Axes)
+        plot = self.default_traj_metric.plot()
+        assert isinstance(plot, Axes)
 
     def test_hvplot_exists(self):
         import holoviews
-        result = self.default_traj_latlon.hvplot(geo=True, tiles='OSM')
-        assert isinstance(result, holoviews.core.overlay.Overlay)
+        plot = self.default_traj_latlon.hvplot(geo=True)
+        assert isinstance(plot, holoviews.core.overlay.Overlay)
+        assert len(plot.Path.ddims) == 2
 
     def test_hvplot_exists_without_crs(self):
         import holoviews
         traj = make_traj([Node(0, 0), Node(10, 10, day=2)], None)
-        result = traj.hvplot()
-        assert isinstance(result, holoviews.core.overlay.Overlay)
+        plot = traj.hvplot()
+        assert isinstance(plot, holoviews.core.overlay.Overlay)
 
     def test_tolinestring_does_not_alter_df(self):
         traj = self.default_traj_metric
@@ -274,11 +238,6 @@ class TestTrajectory:
     def test_plot_does_not_alter_df(self):
         traj = self.default_traj_metric.copy()
         traj.plot(column='speed')
-        assert_frame_equal(self.default_traj_metric.df, traj.df)
-
-    def test_splitbyobservationgap_does_not_alter_df(self):
-        traj = self.default_traj_metric.copy()
-        traj.split_by_observation_gap(timedelta(minutes=5))
         assert_frame_equal(self.default_traj_metric.df, traj.df)
 
     def test_linestringbetween_does_not_alter_df(self):

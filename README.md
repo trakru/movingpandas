@@ -7,31 +7,24 @@
 [![DOI](https://zenodo.org/badge/161995245.svg)](https://zenodo.org/badge/latestdoi/161995245)
 [![pyOpenSci](https://camo.githubusercontent.com/63ff31cdb80a06361e53ac2b9ac0d184118ebd0b/68747470733a2f2f74696e7975726c2e636f6d2f7932326e62387570)](https://github.com/pyOpenSci/software-review/issues/18)
 
+<img align="right" src="https://anitagraser.github.io/movingpandas/pics/movingpandas.png">
 
-MovingPandas implements a Trajectory class and corresponding methods based on **GeoPandas**.
+MovingPandas implements a Trajectory class and corresponding methods based on **[GeoPandas](https://geopandas.org)**.
+
+Visit **[movingpandas.org](http://movingpandas.org)** for details! 
 
 You can try MovingPandas in a MyBinder notebook - no installation required: [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/anitagraser/movingpandas/binder-tag?filepath=tutorials/0_getting_started.ipynb)
 
 
 ## Documentation
 
-The official documentation is hosted on ReadTheDocs: https://movingpandas.readthedocs.io
+The official documentation is hosted on **[ReadTheDocs](https://movingpandas.readthedocs.io)**
 
-## Introduction 
-
-Common Simple Features-based data models where trajectories consist of geometries with timestamps can be readily implemented in GIS environments, but they suffer from a lack of support for the temporal dimension, such as functions for duration and speed.
-
-In stark contrast, the Pandas data analysis library has been developed with a strong focus on time series. By choosing Pandas data structures (1D series and 2D DataFrames) as a base for MovingPandas, we gain access to the library’s built-in functionality, including: flexible indexing on timestamps and other column types; memory-efficient sparse data structures for data that is mostly missing or mostly constant; an integrated ‘group by’ engine for aggregating and transforming datasets, and moving window statistics (rolling mean, rolling standard deviation, etc.).
-
-GeoPandas extends the data types that can be used in Pandas DataFrames, thus creating GeoDataFrames. Geometric operations on these spatial data types are performed by Shapely. Geopandas further depends on Fiona for file access (which enables direct reading of GeoDataFrames from common spatial file formats, such as GeoPackage or Shapefile), and descartes and matplotlib for plotting.
-
-MovingPandas uses the following terminology. A *trajectory* is, or more correctly has, a time-ordered series of geometries. These
-geometries and associated attributes are stored in a GeoDataFrame *df*. Furthermore, a trajectory can have a *parent* trajectory and can itself be the parent of successive trajectories. Raw unsegmented streams of movement data, as well as semantically meaningful subsections or other subsections, can therefore be represented as trajectories. Depending on the use case, the trajectory object can access a point-based or a line-based representation of its data. (Source: [[0]](#publications))
 
 ## Examples
 
-![movingpandas_ais3](https://user-images.githubusercontent.com/590385/73123652-4eeab080-3f92-11ea-9fb3-15afafcdb33f.PNG)
-![movingpandas_ais15](https://user-images.githubusercontent.com/590385/73123664-5ad67280-3f92-11ea-8b42-02a0135f0f5c.PNG)
+![movingpandas_animated](https://user-images.githubusercontent.com/590385/89099729-a9f1da00-d3f1-11ea-91c2-904d477fdcb2.gif)
+![movingpandas_ais](https://user-images.githubusercontent.com/590385/73123664-5ad67280-3f92-11ea-8b42-02a0135f0f5c.PNG)
 
 ## Installation
 
@@ -114,8 +107,18 @@ Please cite [[0]](#publications) when using MovingPandas in your research.
 
 ## Publications
 
-[0] Graser, A. (2019). MovingPandas: Efficient Structures for Movement Data in Python. GI_Forum ‒ Journal of Geographic Information Science 2019, 1-2019, 54-68. doi:10.1553/giscience2019_01_s54. URL: https://www.austriaca.at/rootcollection?arp=0x003aba2b
+### About MovingPandas
 
-[1] Graser, A. (2019). Analyzing Movement Data with MovingPandas. Workshop at the OpenGeoHub summer school, Münster, Germany.
+[0] [Graser, A. (2019). MovingPandas: Efficient Structures for Movement Data in Python. GI_Forum ‒ Journal of Geographic Information Science 2019, 1-2019, 54-68. doi:10.1553/giscience2019_01_s54.](https://www.austriaca.at/rootcollection?arp=0x003aba2b)
+
+[1] [Graser, A. & Dragaschnig, M. (2020). Exploring movement data in notebook environments. To be presented at MoVIS 2020, IEEE VIS 2020.](http://move.geog.ucsb.edu/movis2020/)
+
+### Referencing MovingPandas
+
+* [Graser, A. & Dragaschnig, M. (2020). Open Geospatial Tools for Movement Data Exploration. KN ‒ Journal of Cartography and Geographic Information, 70(1), 3-10. doi:10.1007/s42489-020-00039-y.](https://link.springer.com/article/10.1007/s42489-020-00039-y)
+
+### Workshop Videos
+
+* [Graser, A. (2019). Analyzing Movement Data with MovingPandas. Workshop at the OpenGeoHub summer school, Münster, Germany.](http://www.youtube.com/watch?v=qeLQfnpJV1g)
 
 [![WorkshopVideo](https://user-images.githubusercontent.com/590385/67161044-f08cb100-f356-11e9-8799-f972175ec7f4.png)](http://www.youtube.com/watch?v=qeLQfnpJV1g "Anita Graser: Analyzing movement data")

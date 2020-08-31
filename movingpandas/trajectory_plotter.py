@@ -2,7 +2,7 @@
 
 import matplotlib.pyplot as plt
 import hvplot.pandas # seems to be necessary for the following import to work
-from holoviews import opts
+from holoviews import opts, dim
 
 
 class _TrajectoryPlotter:
@@ -60,6 +60,8 @@ class _TrajectoryPlotter:
         line_gdf = self._make_line_df(traj)
         if not traj.is_latlon and traj.crs is not None:
             line_gdf = line_gdf.to_crs(epsg=4326)
+        if self.column and type(self.column) == str:
+            self.kwargs['c'] = dim(self.column)  # fixes https://github.com/anitagraser/movingpandas/issues/71
         if self.column and self.column_to_color:
             try:
                 color = self.column_to_color[traj.df[self.column].max()]
@@ -86,27 +88,30 @@ class _TrajectoryCollectionPlotter(_TrajectoryPlotter):
     def __init__(self, data, *args, **kwargs):
         super().__init__(data, *args, **kwargs)
 
+    def get_min_max_values(self):
+        speed_col_name = self.data.trajectories[0].get_speed_column_name()
+        if self.column == speed_col_name and speed_col_name not in self.data.trajectories[0].df.columns:
+            self.data.add_speed(overwrite=True)
+        self.max_value = self.kwargs.pop('vmax', self.data.get_max(self.column))
+        self.min_value = self.kwargs.pop('vmin', self.data.get_min(self.column))
+
     def plot(self):
         if self.column:
-            speed_col_name = self.data.trajectories[0].get_speed_column_name()
-            if self.column == speed_col_name and speed_col_name not in self.data.trajectories[0].df.columns:
-                self.data.add_speed(overwrite=True)
-            self.max_value = self.kwargs.pop('vmax', self.data.get_max(self.column))
-            self.min_value = self.kwargs.pop('vmin', self.data.get_min(self.column))
+            self.get_min_max_values()
 
         self.ax = plt.figure(figsize=self.figsize).add_subplot(1, 1, 1)
-        for traj in self.data.trajectories:
+        for traj in self.data:
             self.ax = self._plot_trajectory(traj)
             self.kwargs['legend'] = False  # has to be removed after the first iteration, otherwise we get multiple legends!
 
         self.kwargs.pop('column', None)  # has to be popped, otherwise there's an error in the following plot call if we don't remove column from kwargs
-        start_locs = self.data.get_start_locations([self.column])
+        start_locs = self.data.get_start_locations()
         ax = start_locs.plot(ax=self.ax, column=self.column, color='white', *self.args, **self.kwargs)
         return ax
 
     def hvplot(self):
         opts.defaults(opts.Overlay(width=self.width, height=self.height, active_tools=['wheel_zoom']))
-        for traj in self.data.trajectories:
+        for traj in self.data:
             overlay = self._hvplot_trajectory(traj)
             if self.overlay:
                 self.overlay = self.overlay * overlay
